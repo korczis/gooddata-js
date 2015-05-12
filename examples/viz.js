@@ -15,7 +15,9 @@ var elements = [attr1, attr2, metric];
         var canvas = document.createElement('canvas'),
             context = canvas.getContext('2d'),
             gradient;
-        size = size || 64;
+
+            size = size || 128;
+
         canvas.width = size;
         canvas.height = size;
         gradient = context.createRadialGradient(
@@ -29,10 +31,44 @@ var elements = [attr1, attr2, metric];
         return canvas;
     }
 
+    var tick = function(stats) {
+
+        stats.begin();
+
+        // monitored code goes here
+
+        stats.end();
+
+        requestAnimationFrame(function() {
+            tick(stats);
+        });
+    };
+
+    function initLoop() {
+        var stats = new Stats();
+        stats.setMode(0); // 0: fps, 1: ms
+
+        // align top-left
+        stats.domElement.style.position = 'absolute';
+        stats.domElement.style.left = '0px';
+        stats.domElement.style.top = '0px';
+
+        document.body.appendChild( stats.domElement );
+
+        requestAnimationFrame(function() {
+            tick(stats);
+        });
+    };
+
     function initialize() {
         var mapOptions = {
             zoom: 8,
-            center: new google.maps.LatLng(-34.397, 150.644)
+            center: new google.maps.LatLng(-34.397, 150.644),
+            mapTypeControlOptions: {
+                mapTypeIds: []
+            },
+            streetViewControl: false,
+            disableDefaultUI: true
         };
 
         var map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
@@ -55,10 +91,23 @@ var elements = [attr1, attr2, metric];
                 opacity: 0.3,
                 blending: THREE.NormalBlending,
                 depthTest: false,
+                depthWrite:false,
                 transparent: true
             });
             particles = new THREE.PointCloud( geometry, material );
-            layer.add( particles );
+            layer.add(particles);
+
+            var gui = new dat.GUI();
+            function update(){
+                material.map = new THREE.Texture(generateSprite(material.size));
+                layer.render();
+            }
+
+            gui.add(material, 'size', 2, 100).onChange(update);
+            gui.add(material, 'opacity', 0.1, 1).onChange(update);
+
+            // And finally initLoop
+            initLoop();
         });
     }
 
