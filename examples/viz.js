@@ -1,6 +1,5 @@
 // Copyright (C) 2007-2013, GoodData(R) Corporation. All rights reserved.
-var projectId = 'ke0kk4gso44wykymy35h41vb7t0sdsiv', // GoodSales Demo
-    user = 'tomas.korcak@gooddata.com',
+var user = 'tomas.korcak@gooddata.com',
     passwd = '';
 
 // Report elements identifiers from which we execute a GD report
@@ -8,14 +7,36 @@ var projectId = 'ke0kk4gso44wykymy35h41vb7t0sdsiv', // GoodSales Demo
 //    attr1 = 'oppclose.aam81lMifn6q',
 //    attr2 = 'label.opp_owner.id.name';
 
-var metric = 'amyDTB56dJ5p',
-    attr1 = 'Crime.date.mmddyyyy',
-    attr2 = 'label.Time.Time',
-    attr3 = 'label.Incident.Category',
-    attr4 = 'label.Incident.GeoLatitude',
-    attr5 = 'label.Incident.GeoLongitude';
+//var projectId = 'ke0kk4gso44wykymy35h41vb7t0sdsiv'
+//    metric = 'amyDTB56dJ5p',
+//    attr1 = 'Crime.date.mmddyyyy',
+//    attr2 = 'label.Time.Time',
+//    attr3 = 'label.Incident.Category',
+//    attr4 = 'label.Incident.GeoLatitude',
+//    attr5 = 'label.Incident.GeoLongitude';
 
-var elements = [attr1, attr2, attr3, attr4, attr5, metric];
+var BLENDING_TYPES = {
+    "additive": THREE.AdditiveBlending,
+    "normal": THREE.NormalBlending,
+    "substractive": THREE.SubtractiveBlending
+
+};
+var DEFAULT_BLENDING = "normal";
+
+var projectId = 'rq3enqarynvkt7q11u0stev65qdwpow8',
+    metric = 'aPgWeliOiAT7',
+    attr1 = 'incidenttime.date.mmddyyyy',
+    attr2 = 'label.incidentdata.category',
+    attr3 = 'label.locations.xy',
+    attr4 = 'label.locations.neighbourhood';
+
+var elements = [
+    attr1,
+    attr2,
+    attr3,
+    attr4,
+    metric
+];
 
 // For calculating tick time
 var lastCalledTime = Date.now();
@@ -24,7 +45,8 @@ var lastCalledTime = Date.now();
 var stats = null;
 
 var options = {
-    color: "#ff0000"
+    color: "#ff0000",
+    blending: DEFAULT_BLENDING
 };
 
 // Initialize map
@@ -100,12 +122,20 @@ var options = {
     function initialize() {
         var mapOptions = {
             zoom: 8,
-            center: new google.maps.LatLng(-34.397, 150.644),
+            center: new google.maps.LatLng(37.773972, -122.431297),
             mapTypeControlOptions: {
                 mapTypeIds: []
             },
+            panControl: false,
+            zoomControl: true,
+            mapTypeControl: false,
+            scaleControl: false,
             streetViewControl: false,
-            disableDefaultUI: true
+            overviewMapControl: false,
+            zoomControlOptions: {
+                style: google.maps.ZoomControlStyle.SMALL,
+                position: google.maps.ControlPosition.LEFT_BOTTOM
+            }
         };
 
         // Create google map
@@ -117,8 +147,8 @@ var options = {
                 texture = new THREE.Texture(generateSprite()),
                 material, particles;
 
-            for(var i = 0; i < 100; i++) {
-                var location = new google.maps.LatLng(-34.397 + Math.random(), 150.644 + Math.random()),
+            for(var i = 0; i < 100000; i++) {
+                var location = new google.maps.LatLng(37.773972 + Math.random() * 10, -122.431297 + Math.random() * 10),
                     vertex = layer.fromLatLngToVertex(location);
                 geometry.vertices.push( vertex );
             }
@@ -128,7 +158,7 @@ var options = {
                 size: 128,
                 map: texture,
                 opacity: 0.3,
-                blending: THREE.AdditiveBlending,
+                blending: BLENDING_TYPES[DEFAULT_BLENDING],
                 depthTest: true,
                 depthWrite:true,
                 transparent: true
@@ -144,9 +174,18 @@ var options = {
             }
 
             // Initialize loop
-            gui.add(material, 'size', 2, 1024).onChange(update);
-            gui.add(material, 'opacity', 0.1, 1).onChange(update);
-            gui.addColor(options, 'color').onChange(update);
+            var points = gui.addFolder('Points');
+
+            points.add(material, 'size', 2, 1024).onChange(update);
+            points.add(material, 'opacity', 0.1, 1).onChange(update);
+            points.addColor(options, 'color').onChange(update);
+            points.add(options, 'blending', Object.keys(BLENDING_TYPES)).onChange(function() {
+                material.blending = BLENDING_TYPES[options.blending];
+                material.needsUpdate = true;
+                layer.render();
+            });
+
+            points.open();
 
             // And finally initLoop
             initLoop();
@@ -159,19 +198,14 @@ var options = {
 
 // Login
 gooddata.user.login(user, passwd).then(function() {
-
-    // https://github.com/gooddata/gdc-webapp/blob/lk-metric-creation/specification/internal/simpleExecution.res
-
-    var executionConfiguration = {
-        filters: {
-            'Crime.quarter': {
-
-            }
-        }
+    // Ask for data for the given metric and attributes from the GoodSales project
+    var params = {
+        filters: [{
+            "incidenttime.aci81lMifn6q": {"id": 8059 }
+        }]
     };
 
-    // Ask for data for the given metric and attributes from the GoodSales project
-    gooddata.execution.getData(projectId, elements, executionConfiguration).then(function(dataResult) {
+    gooddata.execution.getData(projectId, elements, params).then(function(dataResult) {
         // Yay, data arrived
 
         console.log(dataResult);
