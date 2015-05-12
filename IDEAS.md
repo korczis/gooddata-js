@@ -19,3 +19,8 @@ This is list of possible ideas for enhancenment of gooddata.js
 - Load your own data - NOW!
   - Just paste simple CSV and see it as layer
 - [Configuration import/export](http://workshop.chromeexperiments.com/examples/gui/#5--Saving-Values)
+- Data loading optimizations
+  - Use local storage
+  - Stream data
+  - Use double buffering
+  - Use preloading
