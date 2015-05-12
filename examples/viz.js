@@ -7,13 +7,21 @@ var user = 'tomas.korcak@gooddata.com',
 //    attr1 = 'oppclose.aam81lMifn6q',
 //    attr2 = 'label.opp_owner.id.name';
 
-//var projectId = 'ke0kk4gso44wykymy35h41vb7t0sdsiv'
-//    metric = 'amyDTB56dJ5p',
-//    attr1 = 'Crime.date.mmddyyyy',
-//    attr2 = 'label.Time.Time',
-//    attr3 = 'label.Incident.Category',
-//    attr4 = 'label.Incident.GeoLatitude',
-//    attr5 = 'label.Incident.GeoLongitude';
+var projectId = 'ke0kk4gso44wykymy35h41vb7t0sdsiv'
+    metric = 'amyDTB56dJ5p',
+    attr1 = 'Crime.date.mmddyyyy',
+    attr2 = 'label.Time.Time',
+    attr3 = 'label.Incident.Category',
+    attr4 = 'label.Incident.GeoLatitude',
+    attr5 = 'label.Incident.GeoLongitude';
+
+var elements = [
+    attr1,
+    attr2,
+    attr3,
+    attr4,
+    metric
+];
 
 var BLENDING_TYPES = {
     "additive": THREE.AdditiveBlending,
@@ -29,14 +37,6 @@ var projectId = 'rq3enqarynvkt7q11u0stev65qdwpow8',
     attr2 = 'label.incidentdata.category',
     attr3 = 'label.locations.xy',
     attr4 = 'label.locations.neighbourhood';
-
-var elements = [
-    attr1,
-    attr2,
-    attr3,
-    attr4,
-    metric
-];
 
 // For calculating tick time
 var lastCalledTime = Date.now();
@@ -205,10 +205,11 @@ gooddata.user.login(user, passwd).then(function() {
         }]
     };
 
-    gooddata.execution.getData(projectId, elements, params).then(function(dataResult) {
-        // Yay, data arrived
-
-        console.log(dataResult);
-    });
+    // TODO: Get the data here
+    //gooddata.execution.getData(projectId, elements, params).then(function(dataResult) {
+    //    // Yay, data arrived
+    //
+    //    console.log(dataResult);
+    //});
 });
 
