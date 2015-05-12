@@ -19,6 +19,10 @@ This is list of possible ideas for enhancenment of gooddata.js
 - Load your own data - NOW!
   - Just paste simple CSV and see it as layer
 - [Configuration import/export](http://workshop.chromeexperiments.com/examples/gui/#5--Saving-Values)
+- Data sources
+  - List of BART stations (nice for combining)
+  - List of ATMs (nice for combining)
+  - Trafic info (cameras, tickets)
 - Data loading optimizations
   - Use local storage
   - Stream data
