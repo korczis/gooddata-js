@@ -44,7 +44,7 @@ var projectId = 'rq3enqarynvkt7q11u0stev65qdwpow8',
 var layer = null;
 
 // RBush Tree - https://github.com/mourner/rbush
-var tree = rbush(9, ['.lng', '.lat']);
+var tree = rbush(4, ['.minLng', '.minLat', '.maxLng', '.maxLat']);
 
 // For calculating tick time
 var lastCalledTime = Date.now();
@@ -157,8 +157,7 @@ var map = null;
             var location = new google.maps.LatLng(lat, lng),
                 vertex = layer.fromLatLngToVertex(location);
 
-            // var data = {id: toString(lng) + toString(lat), lng: lng, lat: lat};
-            var data = [180 + lng, 90 + lat, 180 + lng, 90 + lat, entry];
+            var data = {minLng: lng, minLat: lat, maxLng: lng, maxLat: lat, entry: entry};
 
             treePoints.push(data);
             if(treePoints.length % 5000 == 0) {
@@ -256,9 +255,10 @@ var map = null;
         google.maps.event.addListener(map, 'click', function(event) {
             var loc = event.latLng;
             console.log('Click, lng: ' + loc.lng() + ', lat:' + loc.lat());
-            var result = knn(tree, [loc.lng() + 180, loc.lat() + 90], options.knnCount);
+            var point = [loc.lng(), loc.lat(), loc.lng(), loc.lat()];
+            var result = knn(tree, point, options.knnCount);
             for(var i = 0; i < result.length; i++) {
-                console.log(result[i][4]);
+                console.log(result[i].entry);
             }
         });
 
