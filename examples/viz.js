@@ -24,9 +24,11 @@ var elements = [
 ];
 
 var BLENDING_TYPES = {
-    "additive": THREE.AdditiveBlending,
+    "no": THREE.NoBlending,
     "normal": THREE.NormalBlending,
-    "substractive": THREE.SubtractiveBlending
+    "additive": THREE.AdditiveBlending,
+    "substractive": THREE.SubtractiveBlending,
+    "multiply": THREE.MultiplyBlending
 
 };
 var DEFAULT_BLENDING = "normal";
@@ -41,6 +43,9 @@ var projectId = 'rq3enqarynvkt7q11u0stev65qdwpow8',
 // Threejs layer
 var layer = null;
 
+// RBush Tree - https://github.com/mourner/rbush
+var tree = rbush(9, ['.lng', '.lat']);
+
 // For calculating tick time
 var lastCalledTime = Date.now();
 
@@ -53,6 +58,8 @@ var options = {
     stopColor: "#ff0000",
     blending: DEFAULT_BLENDING
 };
+
+var map = null;
 
 // Initialize map
 (function () {
@@ -139,6 +146,8 @@ var options = {
         // Make sure we work with array
         dataResult = dataResult || [];
 
+        var treePoints = [];
+
         for (var i = 0; i < dataResult.rawData.length; i++) {
             var entry = dataResult.rawData[i];
             var coords = entry[2].split(';');
@@ -146,12 +155,35 @@ var options = {
             var lat = parseFloat(coords[0]), lng = parseFloat(coords[1]);
             var location = new google.maps.LatLng(lat, lng),
                 vertex = layer.fromLatLngToVertex(location);
+
+            // var data = {id: toString(lng) + toString(lat), lng: lng, lat: lat};
+            var data = [180 + lng, 90 + lat, 180 + lng, 90 + lat, entry];
+
+            treePoints.push(data);
+            if(treePoints.length % 5000 == 0) {
+                tree.load(treePoints);
+                treePoints = [];
+            }
+
             geometry.vertices.push(vertex);
         }
 
+        if(treePoints.length) {
+            tree.load(treePoints);
+            treePoints = [];
+        }
+
+        // Refactor to function
+        var display = document.createElement('h1');
+        display.style.color = 'black';
+        display.innerHTML = dataResult.rawData.length + ' points';
+        var myTextDiv = document.createElement('div');
+        myTextDiv.appendChild(display);
+        map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(myTextDiv);
+
         texture.needsUpdate = true;
         material = new THREE.PointCloudMaterial({
-            size: 128,
+            size: 16,
             map: texture,
             opacity: 0.3,
             blending: BLENDING_TYPES[DEFAULT_BLENDING],
@@ -215,7 +247,15 @@ var options = {
         };
 
         // Create google map
-        var map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
+        map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
+
+        google.maps.event.addListener(map, 'click', function(event) {
+            var loc = event.latLng;
+            var result = knn(tree, [loc.lng() + 180, loc.lat() + 90], 1);
+            for(var i = 0; i < result.length; i++) {
+                console.log(result[i][4]);
+            }
+        });
 
         // Initialize three.js layer
         layer = new ThreejsLayer({map: map}, function (layer) {
@@ -242,6 +282,16 @@ var options = {
             initLayer(layer, dataResult).render();
 
             console.log(dataResult);
+        });
+
+        gooddata.xhr.post('/gdc/app/projects/rq3enqarynvkt7q11u0stev65qdwpow8/execute/raw/', {data: '{"report_req":{"reportDefinition":"/gdc/md/rq3enqarynvkt7q11u0stev65qdwpow8/obj/1320"}}'}).then(function (dataResult) {
+            //    // Yay, data arrived
+            //
+            console.log(dataResult.uri);
+            gooddata.xhr.get(dataResult.uri).then(function (csvResult) {
+                // var data = Papa.parse(csvResult);
+                console.log(csvResult);
+            });
         });
     });
 }());

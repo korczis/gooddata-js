@@ -1,9 +1,5 @@
 'use strict';
 
-var Queue = require('tinyqueue');
-
-module.exports = knn;
-
 function knn(tree, queryPoint, n) {
     var node = tree.data,
         result = [],
