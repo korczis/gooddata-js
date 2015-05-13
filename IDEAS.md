@@ -4,7 +4,10 @@ This is list of possible ideas for enhancenment of gooddata.js
 
 - Automatically list GD stuff
   - Projects
-  - Metrics
+  -- https://secure.gooddata.com/gdc/md/
+  - Reports
+  -- https://secure.gooddata.com/gdc/md/rq3enqarynvkt7q11u0stev65qdwpow8/query/reports and then parse out report/content/definitions[-1], get it from the parsed out URI
+  -- parse out all metrics and attribute URIs from the the report definition, get their title and identifier and populate the setup dialogs
 - Layer support
   - Add layer (based on metric)
     - Own config section (color, blending, etc)
