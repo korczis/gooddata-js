@@ -56,7 +56,8 @@ var options = {
     color: "#ff0000",
     startColor: "#ff0000",
     stopColor: "#ff0000",
-    blending: DEFAULT_BLENDING
+    blending: DEFAULT_BLENDING,
+    knnCount: 1
 };
 
 var map = null;
@@ -215,8 +216,11 @@ var map = null;
             material.needsUpdate = true;
             layer.render();
         });
-
         points.open();
+
+        var knn = gui.addFolder('KNN');
+        knn.add(options, 'knnCount', 1, 1000).step(1);
+        knn.open();
 
         // And finally initLoop
         initLoop();
@@ -251,7 +255,7 @@ var map = null;
 
         google.maps.event.addListener(map, 'click', function(event) {
             var loc = event.latLng;
-            var result = knn(tree, [loc.lng() + 180, loc.lat() + 90], 1);
+            var result = knn(tree, [loc.lng() + 180, loc.lat() + 90], options.knnCount);
             for(var i = 0; i < result.length; i++) {
                 console.log(result[i][4]);
             }
