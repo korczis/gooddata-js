@@ -255,6 +255,7 @@ var map = null;
 
         google.maps.event.addListener(map, 'click', function(event) {
             var loc = event.latLng;
+            console.log('Click, lng: ' + loc.lng() + ', lat:' + loc.lat());
             var result = knn(tree, [loc.lng() + 180, loc.lat() + 90], options.knnCount);
             for(var i = 0; i < result.length; i++) {
                 console.log(result[i][4]);
