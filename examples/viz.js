@@ -350,11 +350,47 @@ var chart = null;
         // Login
         gooddata.user.login(options.user.username, options.user.password).then(function () {
             // Ask for data for the given metric and attributes from the GoodSales project
-            var params = {
-                filters: [{
-                    "incidenttime.aci81lMifn6q": {"id": 8059}
-                }]
-            };
+
+            gooddata.xhr.get('/gdc/md/').then(function (dataResult) {
+                    var projectFolder = gui.addFolder('Projects');
+                    var projects = {};
+                    for(var i=0; i < dataResult.about.links.length; i++) {
+                        projects[dataResult.about.links[i].title] = dataResult.about.links[i].identifier;
+                    }
+                    options.project = '';
+                    projectFolder.add(options, 'project', projects).onChange(
+                        function () {
+                            gooddata.xhr.get('/gdc/md/'+options.project+'/query/reports').then(function (dataResult) {
+                                var reports = {};
+                                for(var i=0; i < dataResult.query.entries.length; i++) {
+                                    reports[dataResult.query.entries[i].title] = dataResult.query.entries[i].link;
+                                };
+                                options.report = '';
+                                projectFolder.add(options, 'report', reports).onChange(
+                                    function () {
+                                        gooddata.xhr.get(options.report).then(function (dataResult) {
+                                            options.reportDef = dataResult.report.content.definitions[dataResult.report.content.definitions.length-1];
+                                                gooddata.xhr.get(options.reportDef).then(function (dataResult) {
+                                                    options.column = '';
+                                                    var columns = {};
+                                                    for(var i=0; i < dataResult.reportDefinition.content.grid.metrics.length; i++) {
+                                                        columns[dataResult.reportDefinition.content.grid.metrics[i].alias] = dataResult.reportDefinition.content.grid.metrics[i].uri;
+                                                    };
+                                                    for(var i=0; i < dataResult.reportDefinition.content.grid.rows.length; i++) {
+                                                        columns[dataResult.reportDefinition.content.grid.rows[i].attribute.alias] = dataResult.reportDefinition.content.grid.rows[i].attribute.uri;
+                                                    };
+                                                    projectFolder.add(options, 'column', columns);
+                                                });
+
+                                        })
+                                    }
+                                );
+                            });
+
+                        }
+                    );
+                    projectFolder.open();
+            });
 
             gooddata.xhr.post('/gdc/app/projects/rq3enqarynvkt7q11u0stev65qdwpow8/execute/raw/', {data: '{"report_req":{"reportDefinition":"/gdc/md/rq3enqarynvkt7q11u0stev65qdwpow8/obj/1320"}}'}).then(function (dataResult) {
                 $.ajax({
