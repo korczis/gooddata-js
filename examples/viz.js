@@ -1,4 +1,6 @@
 // Copyright (C) 2007-2013, GoodData(R) Corporation. All rights reserved.
+google.load("visualization", "1", {packages:["corechart"]});
+var chart = null;
 
 // Initialize map
 (function () {
@@ -44,8 +46,6 @@
 
     var options = {
         color: "#ff0000",
-        startColor: "#ff0000",
-        stopColor: "#ff0000",
         blending: DEFAULT_BLENDING,
         knn: {
             count: 10
@@ -56,7 +56,8 @@
             login: function() {
                 doLogin();
             }
-        }
+        },
+        layers: []
     };
 
     var map = null;
@@ -129,13 +130,56 @@
         // align top-left
         stats.domElement.style.position = 'absolute';
         stats.domElement.style.left = '0px';
-        stats.domElement.style.top = '0px';
+        stats.domElement.style.top = '600px';
 
         document.body.appendChild(stats.domElement);
 
         requestAnimationFrame(tick);
     };
 
+    function redrawChart(displayData) {
+        // map the input so that it can be consumed by google charts
+        var outData = displayData.map(function(ar){return [ar.entry["Category"], parseInt(ar.entry["# Incidents"])]});
+
+        // aggregate
+        var aggr = {};
+        for (var i = 0; i < outData.length; i++) {
+            var c = outData[i];
+            if (aggr.hasOwnProperty(c[0])){
+                aggr[c[0]] += c[1]
+            } else {
+                aggr[c[0]] = c[1]
+            }
+        };
+        var keys = Object.keys(aggr)
+        outData = []
+        for (var i = 0; i < keys.length; i++) {
+            outData.push([keys[i], aggr[keys[i]]])
+        };
+
+        // add header
+        outData.unshift(["Crime Type", "Count"])
+
+        var data = new google.visualization.arrayToDataTable(outData);
+
+        var options = {
+          title: 'Incident count by type',
+          legend: { position: 'none' },
+          chartArea: { left: 125 },
+          //hAxis: {ticks: ticks}
+        };
+
+        chart.draw(data, options);
+    }
+
+    function displayChart(){
+
+        var chartDiv = document.createElement('div');
+        chart = new google.visualization.BarChart(chartDiv);
+
+        map.controls[google.maps.ControlPosition.TOP_LEFT].push(chartDiv);
+    };
+    
     function initLayer(layer, rawData) {
         var geometry = new THREE.Geometry(),
             texture = new THREE.Texture(generateSprite()),
@@ -175,15 +219,7 @@
             tree.load(treePoints);
             treePoints = [];
         }
-
-        // Refactor to function
-        var display = document.createElement('h1');
-        display.style.color = 'black';
-        display.innerHTML = numRows + ' points';
-        var myTextDiv = document.createElement('div');
-        myTextDiv.appendChild(display);
-        map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(myTextDiv);
-
+        
         texture.needsUpdate = true;
         material = new THREE.PointCloudMaterial({
             size: 16,
@@ -203,24 +239,55 @@
             layer.render();
         }
 
-        // Initialize loop
-        var points = gui.addFolder('Points');
-
-        points.add(material, 'size', 2, 1024).onChange(update);
-        points.add(material, 'opacity', 0.1, 1).onChange(update);
-        points.addColor(options, 'color').onChange(update);
-        // points.addColor(options, 'startColor').onChange(update);
-        // points.addColor(options, 'stopColor').onChange(update);
-        points.add(options, 'blending', Object.keys(BLENDING_TYPES)).onChange(function () {
-            material.blending = BLENDING_TYPES[options.blending];
-            material.needsUpdate = true;
-            layer.render();
-        });
-        points.open();
-
         var knn = gui.addFolder('KNN');
         knn.add(options.knn, 'count', 1, 1000).step(1);
         knn.open();
+
+        // Initialize loop
+        var layersCanvas = gui.addFolder('Layers');
+
+        layersCanvas.add({
+            '+':function() {
+                var layerName = 'Layer ' + options.layers.length
+                var layerFolder = layersCanvas.addFolder(layerName);
+
+                layerFolder.add({'-':function(){
+                    layersCanvas.removeFolder(layerName);
+
+                }},'-');
+
+                material = new THREE.PointCloudMaterial({
+                    size: 16,
+                    map: texture,
+                    opacity: 0.3,
+                    blending: BLENDING_TYPES[DEFAULT_BLENDING],
+                    depthTest: true,
+                    depthWrite: true,
+                    transparent: true
+                });
+
+                var newLayer = {
+                    material: material,
+                    options: {
+                        color: '#ff0000',
+                        blending: DEFAULT_BLENDING
+                    }
+                };
+
+                layerFolder.add(newLayer.material, 'size', 2, 1024).onChange(update);
+                layerFolder.add(newLayer.material, 'opacity', 0.1, 1).onChange(update);
+                layerFolder.addColor(newLayer.options, 'color').onChange(update);
+                layerFolder.add(newLayer.options, 'blending', Object.keys(BLENDING_TYPES)).onChange(function () {
+                    newLayer.material.blending = BLENDING_TYPES[newLayer.options.blending];
+                    newLayer.material.needsUpdate = true;
+                    layer.render();
+                });
+
+                options.layers.push(newLayer)
+                layerFolder.open();
+
+            }},'+');
+
 
         // And finally initLoop
         initLoop();
@@ -234,11 +301,11 @@
     function initialize() {
         // Create default GUI
         gui = new dat.GUI();
-        var user = gui.addFolder('Login');
-        user.add(options.user, 'username');
-        user.add(options.user, 'password');
-        user.add(options.user, 'login');
-        user.open();
+        var userFolder = gui.addFolder('Login');
+        userFolder.add(options.user, 'username');
+        userFolder.add(options.user, 'password');
+        userFolder.add(options.user, 'login');
+        userFolder.open();
 
         var mapOptions = {
             zoom: 13,
@@ -266,6 +333,7 @@
             console.log('Click, lng: ' + loc.lng() + ', lat:' + loc.lat());
             var point = [loc.lng(), loc.lat(), loc.lng(), loc.lat()];
             var result = knn(tree, point, options.knn.count);
+            redrawChart(result);
             for(var i = 0; i < result.length; i++) {
                 console.log(result[i].entry);
             }
@@ -275,6 +343,7 @@
         layer = new ThreejsLayer({map: map}, function (layer) {
 
         });
+        displayChart();
     }
 
     function doLogin() {
