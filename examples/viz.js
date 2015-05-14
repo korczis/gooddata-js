@@ -57,10 +57,13 @@ var options = {
     startColor: "#ff0000",
     stopColor: "#ff0000",
     blending: DEFAULT_BLENDING,
-    knnCount: 1
+    knnCount: 10
 };
 
 var map = null;
+
+google.load("visualization", "1", {packages:["corechart"]});
+var chart = null;
 
 // Initialize map
 (function () {
@@ -132,11 +135,54 @@ var map = null;
         // align top-left
         stats.domElement.style.position = 'absolute';
         stats.domElement.style.left = '0px';
-        stats.domElement.style.top = '0px';
+        stats.domElement.style.top = '600px';
 
         document.body.appendChild(stats.domElement);
 
         requestAnimationFrame(tick);
+    };
+
+    function redrawChart(displayData) {
+        // map the input so that it can be consumed by google charts
+        var outData = displayData.map(function(ar){return [ar.entry[0], parseInt(ar.entry[4])]});
+
+        // aggregate
+        var aggr = {};
+        for (var i = 0; i < outData.length; i++) {
+            var c = outData[i];
+            if (aggr.hasOwnProperty(c[0])){
+                aggr[c[0]] += c[1]
+            } else {
+                aggr[c[0]] = c[1]
+            }
+        };
+        var keys = Object.keys(aggr)
+        outData = []
+        for (var i = 0; i < keys.length; i++) {
+            outData.push([keys[i], aggr[keys[i]]])
+        };
+
+        // add header
+        outData.unshift(["Crime Type", "Count"])
+
+        var data = new google.visualization.arrayToDataTable(outData);
+
+        var options = {
+          title: 'Incident count by type',
+          legend: { position: 'none' },
+          chartArea: { left: 125 },
+          //hAxis: {ticks: ticks}
+        };
+
+        chart.draw(data, options);
+    }
+
+    function displayChart(){
+
+        var chartDiv = document.createElement('div');
+        chart = new google.visualization.BarChart(chartDiv);
+
+        map.controls[google.maps.ControlPosition.TOP_LEFT].push(chartDiv);
     };
 
     function initLayer(layer, dataResult) {
@@ -172,14 +218,6 @@ var map = null;
             tree.load(treePoints);
             treePoints = [];
         }
-
-        // Refactor to function
-        var display = document.createElement('h1');
-        display.style.color = 'black';
-        display.innerHTML = dataResult.rawData.length + ' points';
-        var myTextDiv = document.createElement('div');
-        myTextDiv.appendChild(display);
-        map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(myTextDiv);
 
         texture.needsUpdate = true;
         material = new THREE.PointCloudMaterial({
@@ -257,6 +295,7 @@ var map = null;
             console.log('Click, lng: ' + loc.lng() + ', lat:' + loc.lat());
             var point = [loc.lng(), loc.lat(), loc.lng(), loc.lat()];
             var result = knn(tree, point, options.knnCount);
+            redrawChart(result);
             for(var i = 0; i < result.length; i++) {
                 console.log(result[i].entry);
             }
@@ -266,6 +305,7 @@ var map = null;
         layer = new ThreejsLayer({map: map}, function (layer) {
 
         });
+        displayChart();
     }
 
     // Set listener which will trigger initialization after everything is loaded
