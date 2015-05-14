@@ -303,10 +303,12 @@ var chart = null;
 
             for (var i = 0; i < dataResult.query.entries.length; i++) {
                 var report = dataResult.query.entries[i];
-                reportValues[report.title] = JSON.stringify({
-                    title: report.title,
-                    link: report.link
-                });
+                if(/geosource/.test(report.tags)) {
+                    reportValues[report.title] = JSON.stringify({
+                        title: report.title,
+                        link: report.link
+                    });
+                }
             }
 
             options.report = '';
