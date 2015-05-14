@@ -174,7 +174,7 @@ var chart = null;
 
         var column = null;
         try {
-            JSON.parse(sublayer.data.column).title;
+            column = JSON.parse(sublayer.data.column).title;
         } catch(e) {
             column = null;
         }
