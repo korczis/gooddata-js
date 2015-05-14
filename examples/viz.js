@@ -4,21 +4,6 @@ var chart = null;
 
 // Initialize map
 (function () {
-    var projectId = 'rq3enqarynvkt7q11u0stev65qdwpow8'
-    var metric = 'akaFDPTufOga',
-        attr1 = 'label.incidentdata.category',
-        attr2 = 'incidenttime.date.mmddyyyy',
-        attr3 = 'label.locations.xy',
-        attr4 = 'label.locations.neighbourhood';
-
-    var elements = [
-        attr1,
-        attr2,
-        attr3,
-        attr4,
-        metric
-    ];
-
     var BLENDING_TYPES = {
         "no": THREE.NoBlending,
         "normal": THREE.NormalBlending,
@@ -286,7 +271,9 @@ var chart = null;
         var d = $.Deferred();
 
         gooddata.xhr.get('/gdc/md/').then(function (dataResult) {
-            var projectValues = {};
+            var projectValues = {
+                '-- select --': null
+            };
 
             for (var i = 0; i < dataResult.about.links.length; i++) {
                 projectValues[dataResult.about.links[i].title] = dataResult.about.links[i].identifier;
@@ -304,7 +291,9 @@ var chart = null;
         var d = $.Deferred();
 
         gooddata.xhr.get('/gdc/md/' + project + '/query/reports').then(function (dataResult) {
-            var reportValues = {};
+            var reportValues = {
+                '-- select --': null
+            };
 
             for (var i = 0; i < dataResult.query.entries.length; i++) {
                 reportValues[dataResult.query.entries[i].title] = dataResult.query.entries[i].link;
@@ -324,11 +313,13 @@ var chart = null;
         gooddata.xhr.get(options.report).then(function (dataResult) {
             options.reportDef = dataResult.report.content.definitions[dataResult.report.content.definitions.length - 1];
             gooddata.xhr.get(options.reportDef).then(function (dataResult) {
-                var columnValues = {};
+                var columnValues = {
+                    '-- select --': null
+                };
+
                 for (var i = 0; i < dataResult.reportDefinition.content.grid.rows.length; i++) {
                     columnValues[dataResult.reportDefinition.content.grid.rows[i].attribute.alias] = dataResult.reportDefinition.content.grid.rows[i].attribute.uri;
                 }
-                ;
 
                 options.column = '';
 
@@ -346,8 +337,7 @@ var chart = null;
             var valueValues = [];
             for (var i = 0; i < dataResult.attributeElements.elements.length; i++) {
                 valueValues.push(dataResult.attributeElements.elements[i].title);
-            }
-            ;
+            };
 
             options.value = '';
 
@@ -375,17 +365,37 @@ var chart = null;
             var columnList = null;
             var valueList = null;
 
+            function removeFolders(num) {
+                if(num > 2 && reportList) {
+                    projectFolder.remove(reportList);
+                    reportList = null;
+                }
+
+                if(num > 1 && columnList) {
+                    projectFolder.remove(columnList);
+                    columnList = null;
+                }
+
+                if(num > 0 && valueList) {
+                    projectFolder.remove(valueList);
+                    valueList = null;
+                }
+            };
+
             getProjects().then(function (projects) {
-                projectList = projectList ? projectList : projectFolder.add(options, 'project', projects);
+                projectList =  projectFolder.add(options, 'project', projects);
                 projectList.onChange(function (project) {
                     getReports(project).then(function (reports) {
-                        reportList = reportList ? reportList : projectFolder.add(options, 'report', reports);
+                        removeFolders(3);
+                        reportList =  projectFolder.add(options, 'report', reports);
                         reportList.onChange(function (report) {
                             getColumns(report).then(function (columns) {
-                                columnList = columnList ? columnList : projectFolder.add(options, 'column', columns);
+                                removeFolders(2);
+                                columnList =  projectFolder.add(options, 'column', columns);
                                 columnList.onChange(function (column) {
                                     getColumnValues(column).then(function (values) {
-                                        valueList = valueList ? valueList : projectFolder.add(options, 'value', values);
+                                        removeFolders(1);
+                                        valueList = projectFolder.add(options, 'value', values);
                                     });
                                 });
                             });
@@ -512,7 +522,13 @@ var chart = null;
                     var newLayer = {
                         geometry: geometry,
                         material: material,
-                        options: newLayerOptions
+                        options: newLayerOptions,
+                        data: {
+                            project: options.project,
+                            report: options.report,
+                            reportDefinition: options.reportDef,
+                            value: options.value
+                        }
                     };
 
                     function update() {
@@ -534,7 +550,7 @@ var chart = null;
                         'fetch': function () {
                             console.log('Fetching data...');
 
-                            gooddata.xhr.post('/gdc/app/projects/rq3enqarynvkt7q11u0stev65qdwpow8/execute/raw/', {data: '{"report_req":{"reportDefinition":"/gdc/md/rq3enqarynvkt7q11u0stev65qdwpow8/obj/1320"}}'}).then(function (dataResult) {
+                            gooddata.xhr.post('/gdc/app/projects/' + newLayer.data.project + '/execute/raw/', {data: '{"report_req":{"reportDefinition":"' + newLayer.data.reportDefinition + '"}}'}).then(function (dataResult) {
                                 $.ajax({
                                     url: dataResult.uri,
                                     type: "GET",
