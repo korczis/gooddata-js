@@ -136,34 +136,40 @@
         requestAnimationFrame(tick);
     };
 
-    function initLayer(layer, dataResult) {
+    function initLayer(layer, rawData) {
         var geometry = new THREE.Geometry(),
             texture = new THREE.Texture(generateSprite()),
             material, particles;
 
-        // Make sure we work with array
-        dataResult = dataResult || [];
-
         var treePoints = [];
 
-        for (var i = 0; i < dataResult.rawData.length; i++) {
-            var entry = dataResult.rawData[i];
-            var coords = entry[2].split(';');
+        var numRows = 0;
+        Papa.parse(rawData, {
+            header: true,
+            worker: false,
+            step: function(row) {
+                if(!row.data || row.data.length < 1 || !!!row.data[0]['xy']) {
+                    return;
+                }
 
-            var lat = parseFloat(coords[0]), lng = parseFloat(coords[1]);
-            var location = new google.maps.LatLng(lat, lng),
-                vertex = layer.fromLatLngToVertex(location);
+                var coords = row.data[0]['xy'].split(';');
 
-            var data = {minLng: lng, minLat: lat, maxLng: lng, maxLat: lat, entry: entry};
+                var lat = parseFloat(coords[0]), lng = parseFloat(coords[1]);
+                var location = new google.maps.LatLng(lat, lng),
+                    vertex = layer.fromLatLngToVertex(location);
 
-            treePoints.push(data);
-            if(treePoints.length % 5000 == 0) {
-                tree.load(treePoints);
-                treePoints = [];
+                var data = {minLng: lng, minLat: lat, maxLng: lng, maxLat: lat, entry: row.data[0]};
+
+                treePoints.push(data);
+                if(treePoints.length % 5000 == 0) {
+                    tree.load(treePoints);
+                    treePoints = [];
+                }
+
+                geometry.vertices.push(vertex);
+                numRows++;
             }
-
-            geometry.vertices.push(vertex);
-        }
+        });
 
         if(treePoints.length) {
             tree.load(treePoints);
@@ -173,7 +179,7 @@
         // Refactor to function
         var display = document.createElement('h1');
         display.style.color = 'black';
-        display.innerHTML = dataResult.rawData.length + ' points';
+        display.innerHTML = numRows + ' points';
         var myTextDiv = document.createElement('div');
         myTextDiv.appendChild(display);
         map.controls[google.maps.ControlPosition.BOTTOM_CENTER].push(myTextDiv);
@@ -281,22 +287,19 @@
                 }]
             };
 
-            // TODO: Get the data here
-            gooddata.execution.getData(projectId, elements).then(function(dataResult) {
-                // Yay, data arrived
-
-                initLayer(layer, dataResult).render();
-
-                console.log(dataResult);
-            });
-
             gooddata.xhr.post('/gdc/app/projects/rq3enqarynvkt7q11u0stev65qdwpow8/execute/raw/', {data: '{"report_req":{"reportDefinition":"/gdc/md/rq3enqarynvkt7q11u0stev65qdwpow8/obj/1320"}}'}).then(function (dataResult) {
-                //    // Yay, data arrived
-                //
-                console.log(dataResult.uri);
-                gooddata.xhr.get(dataResult.uri).then(function (csvResult) {
-                    // var data = Papa.parse(csvResult);
-                    console.log(csvResult);
+                $.ajax({
+                    url: dataResult.uri,
+                    type: "GET",
+                    beforeSend: function (xhr) {
+                        xhr.setRequestHeader("Accept", "text/csv");
+                    },
+                    success: function(res) {
+                        initLayer(layer, res).render();
+                    },
+                    error: function(err) {
+
+                    }
                 });
             });
         });
