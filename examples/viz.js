@@ -2,18 +2,12 @@
 var user = 'tomas.korcak@gooddata.com',
     passwd = '';
 
-// Report elements identifiers from which we execute a GD report
-//var metric = 'afSEwRwdbMeQ',
-//    attr1 = 'oppclose.aam81lMifn6q',
-//    attr2 = 'label.opp_owner.id.name';
-
 var projectId = 'rq3enqarynvkt7q11u0stev65qdwpow8'
 var metric = 'akaFDPTufOga',
     attr1 = 'label.incidentdata.category',
     attr2 = 'incidenttime.date.mmddyyyy',
     attr3 = 'label.locations.xy',
     attr4 = 'label.locations.neighbourhood';
-
 
 var elements = [
     attr1,
@@ -33,12 +27,8 @@ var BLENDING_TYPES = {
 };
 var DEFAULT_BLENDING = "normal";
 
-var projectId = 'rq3enqarynvkt7q11u0stev65qdwpow8',
-    metric = 'aPgWeliOiAT7',
-    attr1 = 'incidenttime.date.mmddyyyy',
-    attr2 = 'label.incidentdata.category',
-    attr3 = 'label.locations.xy',
-    attr4 = 'label.locations.neighbourhood';
+// GUI Layer
+var gui = null;
 
 // Threejs layer
 var layer = null;
@@ -57,7 +47,16 @@ var options = {
     startColor: "#ff0000",
     stopColor: "#ff0000",
     blending: DEFAULT_BLENDING,
-    knnCount: 1
+    knn: {
+        count: 10
+    },
+    user: {
+        username: '',
+        password: '',
+        login: function() {
+
+        }
+    }
 };
 
 var map = null;
@@ -194,8 +193,6 @@ var map = null;
         particles = new THREE.PointCloud(geometry, material);
         layer.add(particles);
 
-        var gui = new dat.GUI();
-
         function update() {
             material.map = new THREE.Texture(generateSprite(material.size));
             material.map.needsUpdate = true;
@@ -218,7 +215,7 @@ var map = null;
         points.open();
 
         var knn = gui.addFolder('KNN');
-        knn.add(options, 'knnCount', 1, 1000).step(1);
+        knn.add(options, 'knn.count', 1, 1000).step(1);
         knn.open();
 
         // And finally initLoop
@@ -231,6 +228,14 @@ var map = null;
      * Initialize everything what is needed
      */
     function initialize() {
+        // Create default GUI
+        gui = new dat.GUI();
+        var user = gui.addFolder('Login');
+        user.add(options.user, 'username');
+        user.add(options.user, 'password');
+        user.add(options.user, 'login');
+        user.open();
+
         var mapOptions = {
             zoom: 13,
             center: new google.maps.LatLng(37.773972, -122.431297),
@@ -256,7 +261,7 @@ var map = null;
             var loc = event.latLng;
             console.log('Click, lng: ' + loc.lng() + ', lat:' + loc.lat());
             var point = [loc.lng(), loc.lat(), loc.lng(), loc.lat()];
-            var result = knn(tree, point, options.knnCount);
+            var result = knn(tree, point, options.knn.count);
             for(var i = 0; i < result.length; i++) {
                 console.log(result[i].entry);
             }
