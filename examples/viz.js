@@ -1,68 +1,66 @@
 // Copyright (C) 2007-2013, GoodData(R) Corporation. All rights reserved.
-var user = 'tomas.korcak@gooddata.com',
-    passwd = '';
-
-var projectId = 'rq3enqarynvkt7q11u0stev65qdwpow8'
-var metric = 'akaFDPTufOga',
-    attr1 = 'label.incidentdata.category',
-    attr2 = 'incidenttime.date.mmddyyyy',
-    attr3 = 'label.locations.xy',
-    attr4 = 'label.locations.neighbourhood';
-
-var elements = [
-    attr1,
-    attr2,
-    attr3,
-    attr4,
-    metric
-];
-
-var BLENDING_TYPES = {
-    "no": THREE.NoBlending,
-    "normal": THREE.NormalBlending,
-    "additive": THREE.AdditiveBlending,
-    "substractive": THREE.SubtractiveBlending,
-    "multiply": THREE.MultiplyBlending
-
-};
-var DEFAULT_BLENDING = "normal";
-
-// GUI Layer
-var gui = null;
-
-// Threejs layer
-var layer = null;
-
-// RBush Tree - https://github.com/mourner/rbush
-var tree = rbush(4, ['.minLng', '.minLat', '.maxLng', '.maxLat']);
-
-// For calculating tick time
-var lastCalledTime = Date.now();
-
-// FPS Stats
-var stats = null;
-
-var options = {
-    color: "#ff0000",
-    startColor: "#ff0000",
-    stopColor: "#ff0000",
-    blending: DEFAULT_BLENDING,
-    knn: {
-        count: 10
-    },
-    user: {
-        username: '',
-        password: '',
-        login: function() {
-
-        }
-    }
-};
-
-var map = null;
 
 // Initialize map
 (function () {
+    var projectId = 'rq3enqarynvkt7q11u0stev65qdwpow8'
+    var metric = 'akaFDPTufOga',
+        attr1 = 'label.incidentdata.category',
+        attr2 = 'incidenttime.date.mmddyyyy',
+        attr3 = 'label.locations.xy',
+        attr4 = 'label.locations.neighbourhood';
+
+    var elements = [
+        attr1,
+        attr2,
+        attr3,
+        attr4,
+        metric
+    ];
+
+    var BLENDING_TYPES = {
+        "no": THREE.NoBlending,
+        "normal": THREE.NormalBlending,
+        "additive": THREE.AdditiveBlending,
+        "substractive": THREE.SubtractiveBlending,
+        "multiply": THREE.MultiplyBlending
+
+    };
+    var DEFAULT_BLENDING = "normal";
+
+    // GUI Layer
+    var gui = null;
+
+    // Threejs layer
+    var layer = null;
+
+    // RBush Tree - https://github.com/mourner/rbush
+    var tree = rbush(4, ['.minLng', '.minLat', '.maxLng', '.maxLat']);
+
+    // For calculating tick time
+    var lastCalledTime = Date.now();
+
+    // FPS Stats
+    var stats = null;
+
+    var options = {
+        color: "#ff0000",
+        startColor: "#ff0000",
+        stopColor: "#ff0000",
+        blending: DEFAULT_BLENDING,
+        knn: {
+            count: 10
+        },
+        user: {
+            username: 'tomas.korcak+hackathon@gooddata.com',
+            password: 'hackathon',
+            login: function() {
+                doLogin();
+            }
+        }
+    };
+
+    var map = null;
+
     // http://graphics.stanford.edu/~seander/bithacks.html
     // http://bocoup.com/weblog/find-the-closest-power-of-2-with-javascript/
     function nearestPow2(aSize) {
@@ -215,7 +213,7 @@ var map = null;
         points.open();
 
         var knn = gui.addFolder('KNN');
-        knn.add(options, 'knn.count', 1, 1000).step(1);
+        knn.add(options.knn, 'count', 1, 1000).step(1);
         knn.open();
 
         // And finally initLoop
@@ -273,37 +271,37 @@ var map = null;
         });
     }
 
-    // Set listener which will trigger initialization after everything is loaded
-    google.maps.event.addDomListener(window, 'load', initialize);
+    function doLogin() {
+        // Login
+        gooddata.user.login(options.user.username, options.user.password).then(function () {
+            // Ask for data for the given metric and attributes from the GoodSales project
+            var params = {
+                filters: [{
+                    "incidenttime.aci81lMifn6q": {"id": 8059}
+                }]
+            };
 
-    // Login
-    gooddata.user.login(user, passwd).then(function () {
-        // Ask for data for the given metric and attributes from the GoodSales project
-        var params = {
-            filters: [{
-                "incidenttime.aci81lMifn6q": {"id": 8059}
-            }]
-        };
+            // TODO: Get the data here
+            gooddata.execution.getData(projectId, elements).then(function(dataResult) {
+                // Yay, data arrived
 
-        // TODO: Get the data here
-        gooddata.execution.getData(projectId, elements).then(function(dataResult) {
-            // Yay, data arrived
+                initLayer(layer, dataResult).render();
 
-            initLayer(layer, dataResult).render();
+                console.log(dataResult);
+            });
 
-            console.log(dataResult);
-        });
-
-        gooddata.xhr.post('/gdc/app/projects/rq3enqarynvkt7q11u0stev65qdwpow8/execute/raw/', {data: '{"report_req":{"reportDefinition":"/gdc/md/rq3enqarynvkt7q11u0stev65qdwpow8/obj/1320"}}'}).then(function (dataResult) {
-            //    // Yay, data arrived
-            //
-            console.log(dataResult.uri);
-            gooddata.xhr.get(dataResult.uri).then(function (csvResult) {
-                // var data = Papa.parse(csvResult);
-                console.log(csvResult);
+            gooddata.xhr.post('/gdc/app/projects/rq3enqarynvkt7q11u0stev65qdwpow8/execute/raw/', {data: '{"report_req":{"reportDefinition":"/gdc/md/rq3enqarynvkt7q11u0stev65qdwpow8/obj/1320"}}'}).then(function (dataResult) {
+                //    // Yay, data arrived
+                //
+                console.log(dataResult.uri);
+                gooddata.xhr.get(dataResult.uri).then(function (csvResult) {
+                    // var data = Papa.parse(csvResult);
+                    console.log(csvResult);
+                });
             });
         });
-    });
+    };
+
+    // Set listener which will trigger initialization after everything is loaded
+    google.maps.event.addDomListener(window, 'load', initialize);
 }());
-
-
