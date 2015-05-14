@@ -125,7 +125,7 @@ var chart = null;
     function redrawChart(displayData) {
         // map the input so that it can be consumed by google charts
         var outData = displayData.map(function (ar) {
-            return [ar.entry["Category"], parseInt(ar.entry["# Incidents"])]
+            return [ar.entry["Crime"], parseInt(ar.entry["Incidents"])]
         });
 
         // aggregate
@@ -172,6 +172,8 @@ var chart = null;
     function addDataLayer(layer, sublayer, rawData) {
         var treePoints = [];
 
+        var column = JSON.parse(sublayer.data.column).title;
+
         // Parse data
         var numRows = 0;
         Papa.parse(rawData, {
@@ -179,6 +181,10 @@ var chart = null;
             worker: false,
             step: function (row) {
                 if (!row.data || row.data.length < 1 || !!!row.data[0]['Location']) {
+                    return;
+                }
+
+                if(sublayer.data.value && sublayer.data.value != '-- select --' && row.data[0][column] != sublayer.data.value) {
                     return;
                 }
 
@@ -296,7 +302,11 @@ var chart = null;
             };
 
             for (var i = 0; i < dataResult.query.entries.length; i++) {
-                reportValues[dataResult.query.entries[i].title] = dataResult.query.entries[i].link;
+                var report = dataResult.query.entries[i];
+                reportValues[report.title] = JSON.stringify({
+                    title: report.title,
+                    link: report.link
+                });
             }
 
             options.report = '';
@@ -310,7 +320,7 @@ var chart = null;
     function getColumns(report) {
         var d = $.Deferred();
 
-        gooddata.xhr.get(options.report).then(function (dataResult) {
+        gooddata.xhr.get(report.link).then(function (dataResult) {
             options.reportDef = dataResult.report.content.definitions[dataResult.report.content.definitions.length - 1];
             gooddata.xhr.get(options.reportDef).then(function (dataResult) {
                 var columnValues = {
@@ -318,7 +328,11 @@ var chart = null;
                 };
 
                 for (var i = 0; i < dataResult.reportDefinition.content.grid.rows.length; i++) {
-                    columnValues[dataResult.reportDefinition.content.grid.rows[i].attribute.alias] = dataResult.reportDefinition.content.grid.rows[i].attribute.uri;
+                    var row = dataResult.reportDefinition.content.grid.rows[i];
+                    columnValues[row.attribute.alias] = JSON.stringify({
+                        title: row.attribute.alias,
+                        link: row.attribute.uri
+                    });
                 }
 
                 options.column = '';
@@ -333,7 +347,7 @@ var chart = null;
     function getColumnValues(column) {
         var d = $.Deferred();
 
-        gooddata.xhr.get(column + '/elements?order=asc&limit=100').then(function (dataResult) {
+        gooddata.xhr.get(column.link + '/elements?order=asc&limit=100').then(function (dataResult) {
             var valueValues = [];
             for (var i = 0; i < dataResult.attributeElements.elements.length; i++) {
                 valueValues.push(dataResult.attributeElements.elements[i].title);
@@ -388,14 +402,16 @@ var chart = null;
                     getReports(project).then(function (reports) {
                         removeFolders(3);
                         reportList =  projectFolder.add(options, 'report', reports);
-                        reportList.onChange(function (report) {
+                        reportList.onChange(function (reportRaw) {
+                            var report = JSON.parse(reportRaw);
                             getColumns(report).then(function (columns) {
                                 removeFolders(2);
                                 columnList =  projectFolder.add(options, 'column', columns);
-                                columnList.onChange(function (column) {
+                                columnList.onChange(function (columnRaw) {
+                                    var column = JSON.parse(columnRaw);
                                     getColumnValues(column).then(function (values) {
                                         removeFolders(1);
-                                        valueList = projectFolder.add(options, 'value', values);
+                                        valueList = projectFolder.add(options, 'value', ['-- select --'].concat(values));
                                     });
                                 });
                             });
@@ -404,91 +420,11 @@ var chart = null;
                 });
             });
 
-            /*
-            gooddata.xhr.get('/gdc/md/').then(function (dataResult) {
-                var projectFolder = gui.addFolder('Projects');
-                projectValues = {};
-                for (var i = 0; i < dataResult.about.links.length; i++) {
-                    projectValues[dataResult.about.links[i].title] = dataResult.about.links[i].identifier;
-                }
-                options.project = '';
-                if (projectList) {
-                    projectFolder.remove(projectList);
-                    if (reportList)
-                        projectFolder.remove(reportList);
-                    if (columnList)
-                        projectFolder.remove(columnList);
-                    if (valueList)
-                        projectFolder.remove(valueList);
-                }
-
-                projectList = projectFolder.add(options, 'project', projectValues);
-                projectList.onChange(function () {
-                        gooddata.xhr.get('/gdc/md/' + options.project + '/query/reports').then(function (dataResult) {
-                            reportValues = {};
-                            for (var i = 0; i < dataResult.query.entries.length; i++) {
-                                reportValues[dataResult.query.entries[i].title] = dataResult.query.entries[i].link;
-                            }
-                            ;
-                            options.report = '';
-                            if (reportList) {
-                                projectFolder.remove(reportList);
-                                if (columnList)
-                                    projectFolder.remove(columnList);
-                                if (valueList)
-                                    projectFolder.remove(valueList);
-                            }
-                            reportList = projectFolder.add(options, 'report', reportValues);
-                            reportList.onChange(
-                                function () {
-                                    gooddata.xhr.get(options.report).then(function (dataResult) {
-                                        options.reportDef = dataResult.report.content.definitions[dataResult.report.content.definitions.length - 1];
-                                        gooddata.xhr.get(options.reportDef).then(function (dataResult) {
-                                            options.column = '';
-                                            columnValues = {};
-                                            for (var i = 0; i < dataResult.reportDefinition.content.grid.rows.length; i++) {
-                                                columnValues[dataResult.reportDefinition.content.grid.rows[i].attribute.alias] = dataResult.reportDefinition.content.grid.rows[i].attribute.uri;
-                                            }
-                                            ;
-                                            if (columnList) {
-                                                projectFolder.remove(columnList);
-                                                if (valueList)
-                                                    projectFolder.remove(valueList);
-
-                                            }
-                                            columnList = projectFolder.add(options, 'column', columnValues);
-                                            columnList.onChange(function () {
-                                                    gooddata.xhr.get(options.column + '/elements?order=asc&limit=100').then(function (dataResult) {
-                                                        options.value = '';
-                                                        valueValues = [];
-                                                        for (var i = 0; i < dataResult.attributeElements.elements.length; i++) {
-                                                            valueValues.push(dataResult.attributeElements.elements[i].title);
-                                                        }
-                                                        ;
-                                                        if (valueList) {
-                                                            projectFolder.remove(valueList);
-                                                        }
-                                                        valueList = projectFolder.add(options, 'value', valueValues);
-                                                    });
-                                                }
-                                            );
-                                        });
-                                    });
-                                }
-                            );
-                        });
-
-                    }
-                );
-                projectFolder.open();
-            });
-            //*/
-
             // Initialize loop
             var layersCanvas = gui.addFolder('Layers');
             layersCanvas.add({
                 '+': function () {
-                    var layerName = 'Layer ' + options.layers.length
+                    var layerName = 'Layer ' + JSON.parse(options.report).title;
                     var layerFolder = layersCanvas.addFolder(layerName);
 
                     layerFolder.add({
@@ -527,6 +463,7 @@ var chart = null;
                             project: options.project,
                             report: options.report,
                             reportDefinition: options.reportDef,
+                            column: options.column,
                             value: options.value
                         }
                     };
