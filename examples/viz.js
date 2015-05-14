@@ -169,7 +169,7 @@ var chart = null;
         var options = {
             title: 'Incident count by type',
             legend: {position: 'none'},
-            chartArea: {left: 125},
+            chartArea: {left: 125}
             //hAxis: {ticks: ticks}
         };
 
@@ -187,7 +187,7 @@ var chart = null;
     function addDataLayer(layer, sublayer, rawData) {
         var treePoints = [];
 
-        // Parse d
+        // Parse data
         var numRows = 0;
         Papa.parse(rawData, {
             header: true,
@@ -282,12 +282,197 @@ var chart = null;
         initLoop();
     }
 
+    function getProjects() {
+        var d = $.Deferred();
+
+        gooddata.xhr.get('/gdc/md/').then(function (dataResult) {
+            var projectValues = {};
+
+            for (var i = 0; i < dataResult.about.links.length; i++) {
+                projectValues[dataResult.about.links[i].title] = dataResult.about.links[i].identifier;
+            }
+
+            options.project = '';
+
+            d.resolve(projectValues);
+        });
+
+        return d.promise();
+    }
+
+    function getReports(project) {
+        var d = $.Deferred();
+
+        gooddata.xhr.get('/gdc/md/' + project + '/query/reports').then(function (dataResult) {
+            var reportValues = {};
+
+            for (var i = 0; i < dataResult.query.entries.length; i++) {
+                reportValues[dataResult.query.entries[i].title] = dataResult.query.entries[i].link;
+            }
+
+            options.report = '';
+
+            d.resolve(reportValues);
+        });
+
+        return d.promise();
+    }
+
+    function getColumns(report) {
+        var d = $.Deferred();
+
+        gooddata.xhr.get(options.report).then(function (dataResult) {
+            options.reportDef = dataResult.report.content.definitions[dataResult.report.content.definitions.length - 1];
+            gooddata.xhr.get(options.reportDef).then(function (dataResult) {
+                var columnValues = {};
+                for (var i = 0; i < dataResult.reportDefinition.content.grid.rows.length; i++) {
+                    columnValues[dataResult.reportDefinition.content.grid.rows[i].attribute.alias] = dataResult.reportDefinition.content.grid.rows[i].attribute.uri;
+                }
+                ;
+
+                options.column = '';
+
+                d.resolve(columnValues);
+            });
+        });
+
+        return d.promise();
+    }
+
+    function getColumnValues(column) {
+        var d = $.Deferred();
+
+        gooddata.xhr.get(column + '/elements?order=asc&limit=100').then(function (dataResult) {
+            var valueValues = [];
+            for (var i = 0; i < dataResult.attributeElements.elements.length; i++) {
+                valueValues.push(dataResult.attributeElements.elements[i].title);
+            }
+            ;
+
+            options.value = '';
+
+            d.resolve(valueValues);
+        });
+
+        return d.promise();
+    }
+
     function doLogin() {
+
         // Login
         gooddata.user.login(options.user.username, options.user.password).then(function () {
             var knn = gui.addFolder('KNN');
             knn.add(options.knn, 'count', 1, 1000).step(1);
             knn.open();
+            // Ask for data for the given metric and attributes from the GoodSales project
+
+
+            // TODO: Get project
+            var projectFolder = gui.addFolder('Projects');
+
+            var projectList = null;
+            var reportList = null;
+            var columnList = null;
+            var valueList = null;
+
+            getProjects().then(function (projects) {
+                projectList = projectList ? projectList : projectFolder.add(options, 'project', projects);
+                projectList.onChange(function (project) {
+                    getReports(project).then(function (reports) {
+                        reportList = reportList ? reportList : projectFolder.add(options, 'report', reports);
+                        reportList.onChange(function (report) {
+                            getColumns(report).then(function (columns) {
+                                columnList = columnList ? columnList : projectFolder.add(options, 'column', columns);
+                                columnList.onChange(function (column) {
+                                    getColumnValues(column).then(function (values) {
+                                        valueList = valueList ? valueList : projectFolder.add(options, 'value', values);
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+
+            /*
+            gooddata.xhr.get('/gdc/md/').then(function (dataResult) {
+                var projectFolder = gui.addFolder('Projects');
+                projectValues = {};
+                for (var i = 0; i < dataResult.about.links.length; i++) {
+                    projectValues[dataResult.about.links[i].title] = dataResult.about.links[i].identifier;
+                }
+                options.project = '';
+                if (projectList) {
+                    projectFolder.remove(projectList);
+                    if (reportList)
+                        projectFolder.remove(reportList);
+                    if (columnList)
+                        projectFolder.remove(columnList);
+                    if (valueList)
+                        projectFolder.remove(valueList);
+                }
+
+                projectList = projectFolder.add(options, 'project', projectValues);
+                projectList.onChange(function () {
+                        gooddata.xhr.get('/gdc/md/' + options.project + '/query/reports').then(function (dataResult) {
+                            reportValues = {};
+                            for (var i = 0; i < dataResult.query.entries.length; i++) {
+                                reportValues[dataResult.query.entries[i].title] = dataResult.query.entries[i].link;
+                            }
+                            ;
+                            options.report = '';
+                            if (reportList) {
+                                projectFolder.remove(reportList);
+                                if (columnList)
+                                    projectFolder.remove(columnList);
+                                if (valueList)
+                                    projectFolder.remove(valueList);
+                            }
+                            reportList = projectFolder.add(options, 'report', reportValues);
+                            reportList.onChange(
+                                function () {
+                                    gooddata.xhr.get(options.report).then(function (dataResult) {
+                                        options.reportDef = dataResult.report.content.definitions[dataResult.report.content.definitions.length - 1];
+                                        gooddata.xhr.get(options.reportDef).then(function (dataResult) {
+                                            options.column = '';
+                                            columnValues = {};
+                                            for (var i = 0; i < dataResult.reportDefinition.content.grid.rows.length; i++) {
+                                                columnValues[dataResult.reportDefinition.content.grid.rows[i].attribute.alias] = dataResult.reportDefinition.content.grid.rows[i].attribute.uri;
+                                            }
+                                            ;
+                                            if (columnList) {
+                                                projectFolder.remove(columnList);
+                                                if (valueList)
+                                                    projectFolder.remove(valueList);
+
+                                            }
+                                            columnList = projectFolder.add(options, 'column', columnValues);
+                                            columnList.onChange(function () {
+                                                    gooddata.xhr.get(options.column + '/elements?order=asc&limit=100').then(function (dataResult) {
+                                                        options.value = '';
+                                                        valueValues = [];
+                                                        for (var i = 0; i < dataResult.attributeElements.elements.length; i++) {
+                                                            valueValues.push(dataResult.attributeElements.elements[i].title);
+                                                        }
+                                                        ;
+                                                        if (valueList) {
+                                                            projectFolder.remove(valueList);
+                                                        }
+                                                        valueList = projectFolder.add(options, 'value', valueValues);
+                                                    });
+                                                }
+                                            );
+                                        });
+                                    });
+                                }
+                            );
+                        });
+
+                    }
+                );
+                projectFolder.open();
+            });
+            //*/
 
             // Initialize loop
             var layersCanvas = gui.addFolder('Layers');
@@ -356,10 +541,10 @@ var chart = null;
                                     beforeSend: function (xhr) {
                                         xhr.setRequestHeader("Accept", "text/csv");
                                     },
-                                    success: function(res) {
+                                    success: function (res) {
                                         addDataLayer(layer, newLayer, res).render();
                                     },
-                                    error: function(err) {
+                                    error: function (err) {
 
                                     }
                                 });
