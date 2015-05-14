@@ -172,7 +172,12 @@ var chart = null;
     function addDataLayer(layer, sublayer, rawData) {
         var treePoints = [];
 
-        var column = JSON.parse(sublayer.data.column).title;
+        var column = null;
+        try {
+            JSON.parse(sublayer.data.column).title;
+        } catch(e) {
+            column = null;
+        }
 
         // Parse data
         var numRows = 0;
@@ -184,7 +189,7 @@ var chart = null;
                     return;
                 }
 
-                if(sublayer.data.value && sublayer.data.value != '-- select --' && row.data[0][column] != sublayer.data.value) {
+                if (column && sublayer.data.value && sublayer.data.value != '-- select --' && row.data[0][column] != sublayer.data.value) {
                     return;
                 }
 
@@ -303,7 +308,7 @@ var chart = null;
 
             for (var i = 0; i < dataResult.query.entries.length; i++) {
                 var report = dataResult.query.entries[i];
-                if(/geosource/.test(report.tags)) {
+                if (/geosource/.test(report.tags)) {
                     reportValues[report.title] = JSON.stringify({
                         title: report.title,
                         link: report.link
@@ -353,7 +358,8 @@ var chart = null;
             var valueValues = [];
             for (var i = 0; i < dataResult.attributeElements.elements.length; i++) {
                 valueValues.push(dataResult.attributeElements.elements[i].title);
-            };
+            }
+            ;
 
             options.value = '';
 
@@ -382,33 +388,33 @@ var chart = null;
             var valueList = null;
 
             function removeFolders(num) {
-                if(num > 2 && reportList) {
+                if (num > 2 && reportList) {
                     projectFolder.remove(reportList);
                     reportList = null;
                 }
 
-                if(num > 1 && columnList) {
+                if (num > 1 && columnList) {
                     projectFolder.remove(columnList);
                     columnList = null;
                 }
 
-                if(num > 0 && valueList) {
+                if (num > 0 && valueList) {
                     projectFolder.remove(valueList);
                     valueList = null;
                 }
             };
 
             getProjects().then(function (projects) {
-                projectList =  projectFolder.add(options, 'project', projects);
+                projectList = projectFolder.add(options, 'project', projects);
                 projectList.onChange(function (project) {
                     getReports(project).then(function (reports) {
                         removeFolders(3);
-                        reportList =  projectFolder.add(options, 'report', reports);
+                        reportList = projectFolder.add(options, 'report', reports);
                         reportList.onChange(function (reportRaw) {
                             var report = JSON.parse(reportRaw);
                             getColumns(report).then(function (columns) {
                                 removeFolders(2);
-                                columnList =  projectFolder.add(options, 'column', columns);
+                                columnList = projectFolder.add(options, 'column', columns);
                                 columnList.onChange(function (columnRaw) {
                                     var column = JSON.parse(columnRaw);
                                     getColumnValues(column).then(function (values) {
@@ -422,11 +428,13 @@ var chart = null;
                 });
             });
 
+            var layerNo = 0;
+
             // Initialize loop
             var layersCanvas = gui.addFolder('Layers');
             layersCanvas.add({
                 '+': function () {
-                    var layerName = 'Layer ' + JSON.parse(options.report).title;
+                    var layerName = '' + layerNo++ + ' - Layer ' + JSON.parse(options.report).title;
                     var layerFolder = layersCanvas.addFolder(layerName);
 
                     layerFolder.add({
