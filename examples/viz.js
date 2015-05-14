@@ -44,8 +44,6 @@
 
     var options = {
         color: "#ff0000",
-        startColor: "#ff0000",
-        stopColor: "#ff0000",
         blending: DEFAULT_BLENDING,
         knn: {
             count: 10
@@ -56,7 +54,8 @@
             login: function() {
                 doLogin();
             }
-        }
+        },
+        layers: []
     };
 
     var map = null;
@@ -197,24 +196,55 @@
             layer.render();
         }
 
-        // Initialize loop
-        var points = gui.addFolder('Points');
-
-        points.add(material, 'size', 2, 1024).onChange(update);
-        points.add(material, 'opacity', 0.1, 1).onChange(update);
-        points.addColor(options, 'color').onChange(update);
-        // points.addColor(options, 'startColor').onChange(update);
-        // points.addColor(options, 'stopColor').onChange(update);
-        points.add(options, 'blending', Object.keys(BLENDING_TYPES)).onChange(function () {
-            material.blending = BLENDING_TYPES[options.blending];
-            material.needsUpdate = true;
-            layer.render();
-        });
-        points.open();
-
         var knn = gui.addFolder('KNN');
         knn.add(options.knn, 'count', 1, 1000).step(1);
         knn.open();
+
+        // Initialize loop
+        var layersCanvas = gui.addFolder('Layers');
+
+        layersCanvas.add({
+            '+':function() {
+                var layerName = 'Layer ' + options.layers.length
+                var layerFolder = layersCanvas.addFolder(layerName);
+
+                layerFolder.add({'-':function(){
+                    layersCanvas.removeFolder(layerName);
+
+                }},'-');
+
+                material = new THREE.PointCloudMaterial({
+                    size: 16,
+                    map: texture,
+                    opacity: 0.3,
+                    blending: BLENDING_TYPES[DEFAULT_BLENDING],
+                    depthTest: true,
+                    depthWrite: true,
+                    transparent: true
+                });
+
+                var newLayer = {
+                    material: material,
+                    options: {
+                        color: '#ff0000',
+                        blending: DEFAULT_BLENDING
+                    }
+                };
+
+                layerFolder.add(newLayer.material, 'size', 2, 1024).onChange(update);
+                layerFolder.add(newLayer.material, 'opacity', 0.1, 1).onChange(update);
+                layerFolder.addColor(newLayer.options, 'color').onChange(update);
+                layerFolder.add(newLayer.options, 'blending', Object.keys(BLENDING_TYPES)).onChange(function () {
+                    newLayer.material.blending = BLENDING_TYPES[newLayer.options.blending];
+                    newLayer.material.needsUpdate = true;
+                    layer.render();
+                });
+
+                options.layers.push(newLayer)
+                layerFolder.open();
+
+            }},'+');
+
 
         // And finally initLoop
         initLoop();
@@ -228,11 +258,11 @@
     function initialize() {
         // Create default GUI
         gui = new dat.GUI();
-        var user = gui.addFolder('Login');
-        user.add(options.user, 'username');
-        user.add(options.user, 'password');
-        user.add(options.user, 'login');
-        user.open();
+        var userFolder = gui.addFolder('Login');
+        userFolder.add(options.user, 'username');
+        userFolder.add(options.user, 'password');
+        userFolder.add(options.user, 'login');
+        userFolder.open();
 
         var mapOptions = {
             zoom: 13,
@@ -270,6 +300,8 @@
 
         });
     }
+
+    function doLogin
 
     function doLogin() {
         // Login
