@@ -546,28 +546,21 @@ var chart = null;
                         layer.render();
                     });
 
-                    layerFolder.add({
-                        'fetch': function () {
-                            console.log('Fetching data...');
+                    gooddata.xhr.post('/gdc/app/projects/' + newLayer.data.project + '/execute/raw/', {data: '{"report_req":{"reportDefinition":"' + newLayer.data.reportDefinition + '"}}'}).then(function (dataResult) {
+                        $.ajax({
+                            url: dataResult.uri,
+                            type: "GET",
+                            beforeSend: function (xhr) {
+                                xhr.setRequestHeader("Accept", "text/csv");
+                            },
+                            success: function (res) {
+                                addDataLayer(layer, newLayer, res).render();
+                            },
+                            error: function (err) {
 
-                            gooddata.xhr.post('/gdc/app/projects/' + newLayer.data.project + '/execute/raw/', {data: '{"report_req":{"reportDefinition":"' + newLayer.data.reportDefinition + '"}}'}).then(function (dataResult) {
-                                $.ajax({
-                                    url: dataResult.uri,
-                                    type: "GET",
-                                    beforeSend: function (xhr) {
-                                        xhr.setRequestHeader("Accept", "text/csv");
-                                    },
-                                    success: function (res) {
-                                        addDataLayer(layer, newLayer, res).render();
-                                    },
-                                    error: function (err) {
-
-                                    }
-                                });
-                            });
-
-                        }
-                    }, 'fetch');
+                            }
+                        });
+                    });
 
                     options.layers.push(newLayer)
                     layerFolder.open();
