@@ -1,5 +1,5 @@
 // Copyright (C) 2007-2013, GoodData(R) Corporation. All rights reserved.
-google.load("visualization", "1", {packages:["corechart"]});
+google.load("visualization", "1", {packages: ["corechart"]});
 var chart = null;
 
 // Initialize map
@@ -53,7 +53,7 @@ var chart = null;
         user: {
             username: 'tomas.korcak+hackathon@gooddata.com',
             password: 'hackathon',
-            login: function() {
+            login: function () {
                 doLogin();
             }
         },
@@ -75,7 +75,7 @@ var chart = null;
         });
     }
 
-    function generateSprite(size) {
+    function generateSprite(size, color) {
         var canvas = document.createElement('canvas'),
             context = canvas.getContext('2d'),
             gradient;
@@ -89,8 +89,8 @@ var chart = null;
             canvas.width / 2, canvas.height / 2, canvas.width / 2
         );
 
-        gradient.addColorStop(1.0, 'rgba(' + convertColor(options.color).join() + ',0)');
-        gradient.addColorStop(0.0, 'rgba(' + convertColor(options.color).join() + ',1)');
+        gradient.addColorStop(1.0, 'rgba(' + convertColor(color).join() + ',0)');
+        gradient.addColorStop(0.0, 'rgba(' + convertColor(color).join() + ',1)');
         context.fillStyle = gradient;
         context.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -139,23 +139,27 @@ var chart = null;
 
     function redrawChart(displayData) {
         // map the input so that it can be consumed by google charts
-        var outData = displayData.map(function(ar){return [ar.entry["Category"], parseInt(ar.entry["# Incidents"])]});
+        var outData = displayData.map(function (ar) {
+            return [ar.entry["Category"], parseInt(ar.entry["# Incidents"])]
+        });
 
         // aggregate
         var aggr = {};
         for (var i = 0; i < outData.length; i++) {
             var c = outData[i];
-            if (aggr.hasOwnProperty(c[0])){
+            if (aggr.hasOwnProperty(c[0])) {
                 aggr[c[0]] += c[1]
             } else {
                 aggr[c[0]] = c[1]
             }
-        };
+        }
+        ;
         var keys = Object.keys(aggr)
         outData = []
         for (var i = 0; i < keys.length; i++) {
             outData.push([keys[i], aggr[keys[i]]])
-        };
+        }
+        ;
 
         // add header
         outData.unshift(["Crime Type", "Count"])
@@ -163,40 +167,37 @@ var chart = null;
         var data = new google.visualization.arrayToDataTable(outData);
 
         var options = {
-          title: 'Incident count by type',
-          legend: { position: 'none' },
-          chartArea: { left: 125 },
-          //hAxis: {ticks: ticks}
+            title: 'Incident count by type',
+            legend: {position: 'none'},
+            chartArea: {left: 125},
+            //hAxis: {ticks: ticks}
         };
 
         chart.draw(data, options);
     }
 
-    function displayChart(){
+    function displayChart() {
 
         var chartDiv = document.createElement('div');
         chart = new google.visualization.BarChart(chartDiv);
 
         map.controls[google.maps.ControlPosition.TOP_LEFT].push(chartDiv);
     };
-    
-    function initLayer(layer, rawData) {
-        var geometry = new THREE.Geometry(),
-            texture = new THREE.Texture(generateSprite()),
-            material, particles;
 
+    function addDataLayer(layer, sublayer, rawData) {
         var treePoints = [];
 
+        // Parse d
         var numRows = 0;
         Papa.parse(rawData, {
             header: true,
             worker: false,
-            step: function(row) {
-                if(!row.data || row.data.length < 1 || !!!row.data[0]['xy']) {
+            step: function (row) {
+                if (!row.data || row.data.length < 1 || !!!row.data[0]['Location']) {
                     return;
                 }
 
-                var coords = row.data[0]['xy'].split(';');
+                var coords = row.data[0]['Location'].split(';');
 
                 var lat = parseFloat(coords[0]), lng = parseFloat(coords[1]);
                 var location = new google.maps.LatLng(lat, lng),
@@ -205,92 +206,23 @@ var chart = null;
                 var data = {minLng: lng, minLat: lat, maxLng: lng, maxLat: lat, entry: row.data[0]};
 
                 treePoints.push(data);
-                if(treePoints.length % 5000 == 0) {
+                if (treePoints.length % 5000 == 0) {
                     tree.load(treePoints);
                     treePoints = [];
                 }
 
-                geometry.vertices.push(vertex);
+                sublayer.geometry.vertices.push(vertex);
                 numRows++;
             }
         });
 
-        if(treePoints.length) {
+        if (treePoints.length) {
             tree.load(treePoints);
             treePoints = [];
         }
-        
-        texture.needsUpdate = true;
-        material = new THREE.PointCloudMaterial({
-            size: 16,
-            map: texture,
-            opacity: 0.3,
-            blending: BLENDING_TYPES[DEFAULT_BLENDING],
-            depthTest: true,
-            depthWrite: true,
-            transparent: true
-        });
-        particles = new THREE.PointCloud(geometry, material);
+
+        var particles = new THREE.PointCloud(sublayer.geometry, sublayer.material);
         layer.add(particles);
-
-        function update() {
-            material.map = new THREE.Texture(generateSprite(material.size));
-            material.map.needsUpdate = true;
-            layer.render();
-        }
-
-        var knn = gui.addFolder('KNN');
-        knn.add(options.knn, 'count', 1, 1000).step(1);
-        knn.open();
-
-        // Initialize loop
-        var layersCanvas = gui.addFolder('Layers');
-
-        layersCanvas.add({
-            '+':function() {
-                var layerName = 'Layer ' + options.layers.length
-                var layerFolder = layersCanvas.addFolder(layerName);
-
-                layerFolder.add({'-':function(){
-                    layersCanvas.removeFolder(layerName);
-
-                }},'-');
-
-                material = new THREE.PointCloudMaterial({
-                    size: 16,
-                    map: texture,
-                    opacity: 0.3,
-                    blending: BLENDING_TYPES[DEFAULT_BLENDING],
-                    depthTest: true,
-                    depthWrite: true,
-                    transparent: true
-                });
-
-                var newLayer = {
-                    material: material,
-                    options: {
-                        color: '#ff0000',
-                        blending: DEFAULT_BLENDING
-                    }
-                };
-
-                layerFolder.add(newLayer.material, 'size', 2, 1024).onChange(update);
-                layerFolder.add(newLayer.material, 'opacity', 0.1, 1).onChange(update);
-                layerFolder.addColor(newLayer.options, 'color').onChange(update);
-                layerFolder.add(newLayer.options, 'blending', Object.keys(BLENDING_TYPES)).onChange(function () {
-                    newLayer.material.blending = BLENDING_TYPES[newLayer.options.blending];
-                    newLayer.material.needsUpdate = true;
-                    layer.render();
-                });
-
-                options.layers.push(newLayer)
-                layerFolder.open();
-
-            }},'+');
-
-
-        // And finally initLoop
-        initLoop();
 
         return layer;
     };
@@ -328,13 +260,13 @@ var chart = null;
         // Create google map
         map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
 
-        google.maps.event.addListener(map, 'click', function(event) {
+        google.maps.event.addListener(map, 'click', function (event) {
             var loc = event.latLng;
             console.log('Click, lng: ' + loc.lng() + ', lat:' + loc.lat());
             var point = [loc.lng(), loc.lat(), loc.lng(), loc.lat()];
             var result = knn(tree, point, options.knn.count);
             redrawChart(result);
-            for(var i = 0; i < result.length; i++) {
+            for (var i = 0; i < result.length; i++) {
                 console.log(result[i].entry);
             }
         });
@@ -343,34 +275,104 @@ var chart = null;
         layer = new ThreejsLayer({map: map}, function (layer) {
 
         });
+
         displayChart();
+
+        // And finally initLoop
+        initLoop();
     }
 
     function doLogin() {
         // Login
         gooddata.user.login(options.user.username, options.user.password).then(function () {
-            // Ask for data for the given metric and attributes from the GoodSales project
-            var params = {
-                filters: [{
-                    "incidenttime.aci81lMifn6q": {"id": 8059}
-                }]
-            };
+            var knn = gui.addFolder('KNN');
+            knn.add(options.knn, 'count', 1, 1000).step(1);
+            knn.open();
 
-            gooddata.xhr.post('/gdc/app/projects/rq3enqarynvkt7q11u0stev65qdwpow8/execute/raw/', {data: '{"report_req":{"reportDefinition":"/gdc/md/rq3enqarynvkt7q11u0stev65qdwpow8/obj/1320"}}'}).then(function (dataResult) {
-                $.ajax({
-                    url: dataResult.uri,
-                    type: "GET",
-                    beforeSend: function (xhr) {
-                        xhr.setRequestHeader("Accept", "text/csv");
-                    },
-                    success: function(res) {
-                        initLayer(layer, res).render();
-                    },
-                    error: function(err) {
+            // Initialize loop
+            var layersCanvas = gui.addFolder('Layers');
+            layersCanvas.add({
+                '+': function () {
+                    var layerName = 'Layer ' + options.layers.length
+                    var layerFolder = layersCanvas.addFolder(layerName);
 
+                    layerFolder.add({
+                        '-': function () {
+                            layersCanvas.removeFolder(layerName);
+
+                        }
+                    }, '-');
+
+                    var geometry = new THREE.Geometry();
+
+                    var defaultSize = 16;
+                    var newLayerOptions = {
+                        color: '#ff0000',
+                        blending: DEFAULT_BLENDING
+                    };
+
+                    var texture = new THREE.Texture(generateSprite(defaultSize, newLayerOptions.color));
+                    texture.needsUpdate = true;
+
+                    var material = new THREE.PointCloudMaterial({
+                        size: defaultSize,
+                        map: texture,
+                        opacity: 0.3,
+                        blending: BLENDING_TYPES[DEFAULT_BLENDING],
+                        depthTest: true,
+                        depthWrite: true,
+                        transparent: true
+                    });
+
+                    var newLayer = {
+                        geometry: geometry,
+                        material: material,
+                        options: newLayerOptions
+                    };
+
+                    function update() {
+                        material.map = new THREE.Texture(generateSprite(material.size, newLayer.options.color));
+                        material.map.needsUpdate = true;
+                        layer.render();
                     }
-                });
-            });
+
+                    layerFolder.add(newLayer.material, 'size', 2, 1024).onChange(update);
+                    layerFolder.add(newLayer.material, 'opacity', 0.1, 1).onChange(update);
+                    layerFolder.addColor(newLayer.options, 'color').onChange(update);
+                    layerFolder.add(newLayer.options, 'blending', Object.keys(BLENDING_TYPES)).onChange(function () {
+                        newLayer.material.blending = BLENDING_TYPES[newLayer.options.blending];
+                        newLayer.material.needsUpdate = true;
+                        layer.render();
+                    });
+
+                    layerFolder.add({
+                        'fetch': function () {
+                            console.log('Fetching data...');
+
+                            gooddata.xhr.post('/gdc/app/projects/rq3enqarynvkt7q11u0stev65qdwpow8/execute/raw/', {data: '{"report_req":{"reportDefinition":"/gdc/md/rq3enqarynvkt7q11u0stev65qdwpow8/obj/1320"}}'}).then(function (dataResult) {
+                                $.ajax({
+                                    url: dataResult.uri,
+                                    type: "GET",
+                                    beforeSend: function (xhr) {
+                                        xhr.setRequestHeader("Accept", "text/csv");
+                                    },
+                                    success: function(res) {
+                                        addDataLayer(layer, newLayer, res).render();
+                                    },
+                                    error: function(err) {
+
+                                    }
+                                });
+                            });
+
+                        }
+                    }, 'fetch');
+
+                    options.layers.push(newLayer)
+                    layerFolder.open();
+
+                }
+            }, '+');
         });
     };
 
