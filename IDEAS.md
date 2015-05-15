@@ -7,16 +7,18 @@ This is list of possible ideas for enhancenment of gooddata.js
   - [x] [Reports](https://secure.gooddata.com/gdc/md/rq3enqarynvkt7q11u0stev65qdwpow8/query/reports and then parse out)
   - [x] report/content/definitions[-1], get it from the parsed out URI
   - [x] parse out all metrics and attribute URIs from the the report definition, get their title and identifier and populate the setup dialogs
-- Layer support
-  - Add layer (based on metric)
-    - Own config section (color, blending, etc)
-  - Remove layer
+- [ ] ]Layer support
+  - [x] Add layer (based on metric)
+  - [x] Own config section (color, blending, etc)
+  - [ ] Remove layer
+    - [x] Remove from GUI
+    - [ ] Remove from RTree/rbush
 - [x] [Add R+ tree](https://github.com/mourner/rbush)
-  - [ ] Show aggregation (of something in radius from selected point)
-    - [ ] Avg
-    - [ ] Min
-    - [ ] Max
-    - [ ] Sum 
+- [ ] Show aggregation (of something in radius from selected point)
+  - [ ] Avg
+  - [ ] Min
+  - [ ] Max
+  - [ ] Sum 
 - Shapefiles
 - Animations (this will be hard)
 - Simple local "full-text" search
