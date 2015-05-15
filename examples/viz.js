@@ -433,16 +433,16 @@ var chart = null;
             // Initialize loop
             var layersCanvas = gui.addFolder('Layers');
             layersCanvas.add({
-                '+': function () {
+                'Add Layer': function () {
                     var layerName = '' + layerNo++ + ' - Layer ' + JSON.parse(options.report).title;
                     var layerFolder = layersCanvas.addFolder(layerName);
 
                     layerFolder.add({
-                        '-': function () {
+                        'Remove this layer': function () {
                             layersCanvas.removeFolder(layerName);
 
                         }
-                    }, '-');
+                    }, 'Remove this layer');
 
                     var geometry = new THREE.Geometry();
 
@@ -513,7 +513,7 @@ var chart = null;
                     layerFolder.open();
 
                 }
-            }, '+');
+            }, 'Add Layer');
         });
     };
 
