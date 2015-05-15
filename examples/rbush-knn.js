@@ -1,5 +1,12 @@
 'use strict';
 
+// REVIEW ME: THIS  CAN BE SERIOUS PERFORMANCE ISSUE!
+function tryPeek(queue) {
+    var p = queue.peek();
+
+    return p && p._knnItem;
+}
+
 function knn(tree, queryPoint, n) {
     var node = tree.data,
         result = [],
@@ -16,7 +23,10 @@ function knn(tree, queryPoint, n) {
             queue.push(node.leaf ? {item: child, bbox: toBBox(child), _knnItem: true} : child);
         }
 
-        while (queue.peek()._knnItem && result.length < n) result.push(queue.pop().item);
+        while (tryPeek(queue) && result.length < n) {
+            result.push(queue.pop().item);
+        }
+
         if (result.length === n) break;
 
         node = queue.pop();
