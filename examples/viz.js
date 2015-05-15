@@ -256,31 +256,16 @@ var chart = null;
         // Create google map
         map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
 
-        var moveTimeout = null;
-
         google.maps.event.addListener(map, 'mousemove', function (event) {
             // Check if there are any data in tree
             if(tree.data.children.length < 1) {
                 return;
             }
 
-            if(moveTimeout) {
-                clearTimeout(moveTimeout);
-            }
-
-            moveTimeout = setTimeout(function() {
-                var loc = event.latLng;
-                console.log('Click, lng: ' + loc.lng() + ', lat:' + loc.lat());
-                var point = [loc.lng(), loc.lat(), loc.lng(), loc.lat()];
-                var result = knn(tree, point, options.knn.count);
-                redrawChart(result);
-                for (var i = 0; i < result.length; i++) {
-                    console.log(result[i].entry);
-                }
-
-                moveTimeout = null;
-            }, 50);
-
+            var loc = event.latLng;
+            var point = [loc.lng(), loc.lat(), loc.lng(), loc.lat()];
+            var result = knn(tree, point, options.knn.count);
+            redrawChart(result);
         });
 
         // Initialize three.js layer
