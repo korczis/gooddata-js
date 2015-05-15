@@ -115,7 +115,7 @@ var chart = null;
         // align top-left
         stats.domElement.style.position = 'absolute';
         stats.domElement.style.left = '0px';
-        stats.domElement.style.top = '600px';
+        stats.domElement.style.top = '0px';
 
         document.body.appendChild(stats.domElement);
 
@@ -166,7 +166,7 @@ var chart = null;
         var chartDiv = document.createElement('div');
         chart = new google.visualization.BarChart(chartDiv);
 
-        map.controls[google.maps.ControlPosition.TOP_LEFT].push(chartDiv);
+        map.controls[google.maps.ControlPosition.LEFT_CENTER].push(chartDiv);
     };
 
     function addDataLayer(layer, sublayer, rawData) {
@@ -256,15 +256,31 @@ var chart = null;
         // Create google map
         map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions);
 
-        google.maps.event.addListener(map, 'click', function (event) {
-            var loc = event.latLng;
-            console.log('Click, lng: ' + loc.lng() + ', lat:' + loc.lat());
-            var point = [loc.lng(), loc.lat(), loc.lng(), loc.lat()];
-            var result = knn(tree, point, options.knn.count);
-            redrawChart(result);
-            for (var i = 0; i < result.length; i++) {
-                console.log(result[i].entry);
+        var moveTimeout = null;
+
+        google.maps.event.addListener(map, 'mousemove', function (event) {
+            // Check if there are any data in tree
+            if(tree.data.children.length < 1) {
+                return;
             }
+
+            if(moveTimeout) {
+                clearTimeout(moveTimeout);
+            }
+
+            moveTimeout = setTimeout(function() {
+                var loc = event.latLng;
+                console.log('Click, lng: ' + loc.lng() + ', lat:' + loc.lat());
+                var point = [loc.lng(), loc.lat(), loc.lng(), loc.lat()];
+                var result = knn(tree, point, options.knn.count);
+                redrawChart(result);
+                for (var i = 0; i < result.length; i++) {
+                    console.log(result[i].entry);
+                }
+
+                moveTimeout = null;
+            }, 50);
+
         });
 
         // Initialize three.js layer
