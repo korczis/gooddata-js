@@ -114,7 +114,7 @@ var chart = null;
 
         // align top-left
         stats.domElement.style.position = 'absolute';
-        stats.domElement.style.left = '0px';
+        stats.domElement.style.left = '400px';
         stats.domElement.style.top = '0px';
 
         document.body.appendChild(stats.domElement);
@@ -153,8 +153,17 @@ var chart = null;
 
         var options = {
             title: 'Incident count by type',
-            legend: {position: 'none'},
-            chartArea: {left: 125}
+            legend: { position: 'none' },
+            backgroundColor: '#000000',
+
+            chartArea: { left: 125 },
+            vAxis: {
+                textStyle:{ color: '#FFF' }
+            },
+            hAxis: {
+                textStyle:{ color: '#FFF' }
+            }
+
             //hAxis: {ticks: ticks}
         };
 
@@ -166,7 +175,7 @@ var chart = null;
         var chartDiv = document.createElement('div');
         chart = new google.visualization.BarChart(chartDiv);
 
-        map.controls[google.maps.ControlPosition.LEFT_CENTER].push(chartDiv);
+        map.controls[google.maps.ControlPosition.LEFT_TOP].push(chartDiv);
     };
 
     function addDataLayer(layer, sublayer, rawData) {
