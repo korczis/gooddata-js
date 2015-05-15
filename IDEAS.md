@@ -9,7 +9,11 @@ This is list of possible ideas for enhancenment of gooddata.js
   - [x] parse out all metrics and attribute URIs from the the report definition, get their title and identifier and populate the setup dialogs
 - [ ] Layer support
   - [x] Add layer (based on metric)
-  - [x] Own config section (color, blending, etc)
+  - [x] Layer Configuration
+    - [x] Point Size
+    - [x] Point Opacity
+    - [x] Color
+    - [x] Blending
   - [ ] Remove layer
     - [x] Remove from GUI
     - [ ] Remove from RTree/rbush
