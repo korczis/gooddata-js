@@ -7,7 +7,7 @@ This is list of possible ideas for enhancenment of gooddata.js
   - [x] [Reports](https://secure.gooddata.com/gdc/md/rq3enqarynvkt7q11u0stev65qdwpow8/query/reports and then parse out)
   - [x] report/content/definitions[-1], get it from the parsed out URI
   - [x] parse out all metrics and attribute URIs from the the report definition, get their title and identifier and populate the setup dialogs
-- [ ] ]Layer support
+- [ ] Layer support
   - [x] Add layer (based on metric)
   - [x] Own config section (color, blending, etc)
   - [ ] Remove layer
