@@ -143,9 +143,10 @@ var chart = null;
         outData = []
         for (var i = 0; i < keys.length; i++) {
             outData.push([keys[i], aggr[keys[i]]])
-        }
-        ;
-
+        };
+        outData.sort(function(item1, item2){
+            return item1[0].localeCompare(item2[0])
+        });
         // add header
         outData.unshift(["Crime Type", "Count"])
 
